@@ -9,7 +9,7 @@
    <script async src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.0/dist/tf.min.js"></script>
 
    <!-- mljs linear regression script -->
-   <script src="linear-regression.js"></script>
+   <script src="logistic-regression.js"></script>
 
 
    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
@@ -87,7 +87,7 @@
          var data = results.data;
          var originalData = results.data;
          
-         // mljs Linear Regression implementation -----------------------
+         // mljs Logistic Regression implementation -----------------------
          
          // console.log('original data',data);
          data = data.map(row => row[0].split(","));
@@ -99,10 +99,15 @@
             testFeatures,
             testLabels
          } = loadCSV(data, {
+            dataColumns: ['horsepower', 'displacement', 'weight'],
+            labelColumns: ['passedemissions'],
             shuffle: false,
             splitTest: 100,
-            dataColumns: ['horsepower', 'weight', 'displacement'],
-            labelColumns: ['mpg']
+            converters: {
+               passedemissions: value => {
+               return value === 'TRUE' ? 1 : 0;
+               }
+            }
          });
          //console.log(data[0]);
          
@@ -113,7 +118,7 @@
          // console.log(testLabels);
          
          //class instantiation
-         const regression = new LinearRegression(features, labels, {
+         const regression = new LogisticRegression(features, labels, {
             learningRate: 0.1,
             iterations: 20,
             batchSize: 20
@@ -121,15 +126,7 @@
 
          regression.train();
 
-         const r2 = regression.test(testFeatures, testLabels);
-         console.log('R2 is', r2);
-         console.log('Predicted value:',
-            regression
-               .predict([[130, 1.752, 307]])
-               // .predict([[165, 1.8465, 350]])
-               // .predict([[150, 1.718, 318]])
-               .arraySync()[0]
-            );
+         console.log('Pass/Fail emission test accuracy: ',regression.test(testFeatures, testLabels)*100);
 
          //regression code ends here ------------------------------------------
 

@@ -1,128 +1,132 @@
 //import * as tf from './@tensorflow/tfjs';
 
 class LinearRegression {
-  constructor(features, labels, options) {
-    this.features = this.processFeatures(features);
-    this.labels = tf.tensor(labels);
-    this.mseHistory = [];
+   constructor(features, labels, options) {
+      this.features = this.processFeatures(features);
+      this.labels = tf.tensor(labels);
+      this.mseHistory = [];
 
-    this.options = Object.assign(
-      { learningRate: 0.1, iterations: 1000 },
-      options
-    );
+      this.options = Object.assign({
+            learningRate: 0.1,
+            iterations: 1000
+         },
+         options
+      );
 
-    this.weights = tf.zeros([this.features.shape[1], 1]);
-  }
+      this.weights = tf.zeros([this.features.shape[1], 1]);
+   }
 
-  gradientDescent(features, labels) {
-    const currentGuesses = features.matMul(this.weights);
-    const differences = currentGuesses.sub(labels);
+   gradientDescent(features, labels) {
+      const currentGuesses = features.matMul(this.weights);
+      const differences = currentGuesses.sub(labels);
 
-    const slopes = features
-      .transpose()
-      .matMul(differences)
-      .div(features.shape[0]);
+      const slopes = features
+         .transpose()
+         .matMul(differences)
+         .div(features.shape[0]);
 
-    this.weights = this.weights.sub(slopes.mul(this.options.learningRate));
-  }
+      this.weights = this.weights.sub(slopes.mul(this.options.learningRate));
+   }
 
-  train() {
-    const batchQuantity = Math.floor(
-      this.features.shape[0] / this.options.batchSize
-    );
+   train() {
+      const batchQuantity = Math.floor(
+         this.features.shape[0] / this.options.batchSize
+      );
 
-    for (let i = 0; i < this.options.iterations; i++) {
-      for (let j = 0; j < batchQuantity; j++) {
-        const startIndex = j * this.options.batchSize;
-        const { batchSize } = this.options;
+      for (let i = 0; i < this.options.iterations; i++) {
+         for (let j = 0; j < batchQuantity; j++) {
+            const startIndex = j * this.options.batchSize;
+            const {
+               batchSize
+            } = this.options;
 
-        const featureSlice = this.features.slice(
-          [startIndex, 0],
-          [batchSize, -1]
-        );
-        const labelSlice = this.labels.slice([startIndex, 0], [batchSize, -1]);
-//console.log(featureSlice.arraySync(), labelSlice.arraySync());
+            const featureSlice = this.features.slice(
+               [startIndex, 0],
+               [batchSize, -1]
+            );
+            const labelSlice = this.labels.slice([startIndex, 0], [batchSize, -1]);
+            //console.log(featureSlice.arraySync(), labelSlice.arraySync());
 
-        this.gradientDescent(featureSlice, labelSlice);
+            this.gradientDescent(featureSlice, labelSlice);
+         }
+
+         this.recordMSE();
+         this.updateLearningRate();
+      }
+   }
+
+   predict(observations) {
+      return this.processFeatures(observations).matMul(this.weights);
+   }
+
+   test(testFeatures, testLabels) {
+      testFeatures = this.processFeatures(testFeatures);
+      testLabels = tf.tensor(testLabels);
+
+      const predictions = testFeatures.matMul(this.weights);
+      //console.log('predictions = ', predictions.arraySync());
+      const res = testLabels
+         .sub(predictions)
+         .pow(2)
+         .sum()
+         .arraySync();
+      const tot = testLabels
+         .sub(testLabels.mean())
+         .pow(2)
+         .sum()
+         .arraySync();
+      //console.log('Res fractions = ', res, tot);
+      return 1 - res / tot;
+   }
+
+   processFeatures(features) {
+      features = tf.tensor(features);
+      features = tf.ones([features.shape[0], 1]).concat(features, 1);
+
+      if (this.mean && this.variance) {
+         features = features.sub(this.mean).div(this.variance.pow(0.5));
+      } else {
+         features = this.standardize(features);
       }
 
-      this.recordMSE();
-      this.updateLearningRate();
-    }
-  }
+      return features;
+   }
 
-  predict(observations) {
-    return this.processFeatures(observations).matMul(this.weights);
-  }
+   standardize(features) {
+      const {
+         mean,
+         variance
+      } = tf.moments(features, 0);
 
-  test(testFeatures, testLabels) {
-    testFeatures = this.processFeatures(testFeatures);
-    testLabels = tf.tensor(testLabels);
+      this.mean = mean;
+      this.variance = variance;
 
-    const predictions = testFeatures.matMul(this.weights);
-   //console.log('predictions = ', predictions.arraySync());
-    const res = testLabels
-      .sub(predictions)
-      .pow(2)
-      .sum()
-      .arraySync()
-      ;
-    const tot = testLabels
-      .sub(testLabels.mean())
-      .pow(2)
-      .sum()
-      .arraySync()
-      ;
-   //console.log('Res fractions = ', res, tot);
-    return 1 - res / tot;
-  }
+      return features.sub(mean).div(variance.pow(0.5));
+   }
 
-  processFeatures(features) {
-    features = tf.tensor(features);
-    features = tf.ones([features.shape[0], 1]).concat(features, 1);
+   recordMSE() {
+      const mse = this.features
+         .matMul(this.weights)
+         .sub(this.labels)
+         .pow(2)
+         .sum()
+         .div(this.features.shape[0])
+         .arraySync();
 
-    if (this.mean && this.variance) {
-      features = features.sub(this.mean).div(this.variance.pow(0.5));
-    } else {
-      features = this.standardize(features);
-    }
+      this.mseHistory.unshift(mse);
+   }
 
-    return features;
-  }
+   updateLearningRate() {
+      if (this.mseHistory.length < 2) {
+         return;
+      }
 
-  standardize(features) {
-    const { mean, variance } = tf.moments(features, 0);
-
-    this.mean = mean;
-    this.variance = variance;
-
-    return features.sub(mean).div(variance.pow(0.5));
-  }
-
-  recordMSE() {
-    const mse = this.features
-      .matMul(this.weights)
-      .sub(this.labels)
-      .pow(2)
-      .sum()
-      .div(this.features.shape[0])
-      .arraySync()
-      ;
-
-    this.mseHistory.unshift(mse);
-  }
-
-  updateLearningRate() {
-    if (this.mseHistory.length < 2) {
-      return;
-    }
-
-    if (this.mseHistory[0] > this.mseHistory[1]) {
-      this.options.learningRate /= 2;
-    } else {
-      this.options.learningRate *= 1.05;
-    }
-  }
+      if (this.mseHistory[0] > this.mseHistory[1]) {
+         this.options.learningRate /= 2;
+      } else {
+         this.options.learningRate *= 1.05;
+      }
+   }
 }
 
 //module.exports = LinearRegression;
@@ -142,7 +146,7 @@ class LinearRegression {
 //          learningRate :0.1,
 //          iterations: 1000
 //       }, options);
-      
+
 //       this.weights = tf.zeros([this.features.shape[1], 1]);
 //    }
 
@@ -153,7 +157,7 @@ class LinearRegression {
 //          .transpose()
 //          .matMul(differences)
 //          .div(this.features.shape[0]);
-      
+
 //       this.weights = this.weights.sub(
 //          slopes.mul(this.options.learningRate)
 //          );
@@ -171,7 +175,7 @@ class LinearRegression {
 //       testFeatures = this.processFeatures(testFeatures);
 //       testLabels = tf.tensor(testLabels);
 //       const predictions = testFeatures.matMul(this.weights);
-      
+
 //       const res = testLabels
 //          .sub(predictions)
 //          .pow(2)
@@ -191,7 +195,7 @@ class LinearRegression {
 
 //    processFeatures(features) {
 //       features = tf.tensor(features);
-      
+
 //       if(this.mean && this.variance) {
 //          features = features.sub(this.mean).div(this.variance.pow(0.5));
 //       } else {
@@ -255,7 +259,3 @@ class LinearRegression {
 //       this.m = this.m - (mSlope * this.options.learningRate);
 //       this.b = this.b - (bSlope * this.options.learningRate);
 //    }
-
-
-
-
