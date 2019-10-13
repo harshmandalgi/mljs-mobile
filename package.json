@@ -1,0 +1,15 @@
+{
+  "name": "mljs-mobile",
+  "version": "1.0.0",
+  "description": "Browser Compatible library of simple and efficient tools for Machine Learning in Javascript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "harsh mandalgi, keshav likhar, mohit chaturvedi",
+  "license": "ISC",
+  "dependencies": {
+    "@tensorflow/tfjs": "^1.2.11",
+    "lodash": "^4.17.15"
+  }
+}
