@@ -9,7 +9,7 @@
   "author": "harsh mandalgi, keshav likhar, mohit chaturvedi",
   "license": "ISC",
   "dependencies": {
-    "@tensorflow/tfjs": "^1.2.11",
+    "@tensorflow/tfjs": "^4.5.0",
     "lodash": "^4.17.15"
   }
 }
